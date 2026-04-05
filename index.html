@@ -35,31 +35,103 @@
         }
 
         /* FIX LAYOUT: 3 CỘT CHÍNH */
+        /* Sidebar hỗ trợ ẩn hiện */
         #sidebar {
             width: 300px;
-            min-width: 300px;
+            min-width: 300px; /* Độ rộng mặc định */
             background: white;
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            padding: 15px;
-            transition: all 0.3s ease; /* Hiệu ứng trượt mượt */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
+            height: 100vh;
+            /* Thêm dòng này để ẩn phần thừa khi bóp nhỏ */
+            overflow: visible;
         }
 
-            /* Khi sidebar bị đóng */
+            /* Khi đóng: Ép cả width và min-width về 0 */
             #sidebar.closed {
-                width: 40px;
-                min-width: 40px;
-                padding: 15px 5px;
+                width: 0 !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border-right: none;
             }
 
-                /* Ẩn các thành phần bên trong khi đóng */
-                #sidebar.closed #sidebarTitle,
-                #sidebar.closed #searchInput,
-                #sidebar.closed #patientList {
-                    display: none;
+                /* Ẩn nội dung bên trong khi đóng để không bị tràn chữ ra ngoài */
+                #sidebar.closed #sidebarContent {
+                    opacity: 0;
+                    visibility: hidden;
+                    pointer-events: none;
                 }
+
+        #toggleBtn {
+            position: absolute;
+            right: -15px; /* Nằm ngay mép */
+            top: 20px;
+            background: #1e40af;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Khi sidebar đóng, vẫn giữ nút ở vị trí có thể bấm được */
+        #sidebar.closed #toggleBtn {
+            right: -15px; /* Giữ nguyên hoặc đẩy nhẹ ra tùy màn hình */
+        }
+
+        /* Nút bấm luôn hiển thị */
+        #toggleBtn {
+            position: absolute;
+            right: -15px; /* Nằm đè lên mép */
+            top: 20px;
+            background: #1e40af;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999; /* Luôn nổi lên trên */
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: right 0.3s ease;
+        }
+
+        /* Khi sidebar đóng, đẩy nút sang phải 1 chút để không bị mất */
+        #sidebar.closed #toggleBtn {
+            right: -35px;
+        }
+
+        /* Nút bấm nổi để đóng mở */
+        #toggleBtn {
+            position: absolute;
+            right: -15px;
+            top: 20px;
+            background: #1e40af;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
 
         #main-content {
             flex: 1; /* GIÃN RỘNG HẾT CỠ Ở GIỮA */
@@ -295,16 +367,15 @@
 <body>
 
     <div id="sidebar">
-        <div id="toggleBtn" onclick="toggleSidebar()" style="position: absolute; right: -15px; top: 50%; background: #1e40af; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div id="toggleBtn" onclick="toggleSidebar()">
             <span id="toggleIcon">◀</span>
         </div>
 
-        <h3 id="sidebarTitle" style="color: #1e40af; margin-bottom: 12px; white-space: nowrap;">🔍 DANH SÁCH BỆNH NHÂN</h3>
-        
-        <input type="text" id="searchInput" placeholder="Gõ tên bệnh nhân..."
-               style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 2px solid #3b82f6; outline: none; font-size: 14px;">
-        <div id="patientList" style="flex: 1; overflow-y: auto;">
-            <p style="color: #666; text-align: center;">Đang tải dữ liệu...</p>
+        <div id="sidebarContent" style="width: 300px; padding: 15px;">
+            <h3 style="color: #1e40af; margin-bottom: 12px; white-space: nowrap;">🔍 DANH SÁCH</h3>
+            <input type="text" id="searchInput" placeholder="Gõ tên..." style="width: 100%; padding: 10px;">
+            <div id="patientList" style="margin-top:15px;">
+            </div>
         </div>
     </div>
 
@@ -353,10 +424,11 @@
 
             sidebar.classList.toggle('closed');
 
+            // Đổi chiều mũi tên
             if (sidebar.classList.contains('closed')) {
-                icon.innerText = "▶"; // Đổi icon thành mũi tên mở
+                icon.innerText = "▶";
             } else {
-                icon.innerText = "◀"; // Đổi icon thành mũi tên đóng
+                icon.innerText = "◀";
             }
         }
 
