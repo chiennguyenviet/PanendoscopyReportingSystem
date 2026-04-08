@@ -399,7 +399,7 @@
                     </svg>
                 </button>
             </div>
-            <input type="text" id="searchInput" placeholder="Gõ tên..." style="width: 100%; padding: 10px;">
+            <input type="text" id="searchInput" placeholder="Gõ tên để tìm kiếm..." style="width: 100%; padding: 10px;">
             <div id="patientList" style="margin-top:15px;">
             </div>
         </div>
@@ -418,7 +418,7 @@
 
     <div class="right-panel">
         <h2>📋 Hành chính</h2>
-        <input type="text" id="pName" class="f-input" placeholder="HỌ TÊN BỆNH NHÂN">
+        <input type="text" id="pName" class="f-input" placeholder="Họ tên bệnh nhân">
         <input type="date" id="pDate" class="f-input">
         <input type="text" id="pDoc" class="f-input" placeholder="Bác sĩ thực hiện">
 
@@ -427,14 +427,12 @@
         <input type="file" id="fileUp" hidden multiple accept="image/*" onchange="handleImgs(this.files)">
         <div class="preview-grid" id="pGrid"></div>
 
+        <h2>📝 Sinh thiết</h2>
+        <input type="text" id="moreNotes" class="f-input" placeholder="Vị trí sinh thiết..." value="">
+
+
         <h2>📝 Kết luận & Xử trí</h2>
         <input type="text" id="tStaging" class="f-input" placeholder="Kết luận sơ bộ" value="">
-
-        <h2>📝 Sinh thiết</h2>
-
-<textarea id="moreNotes" class="f-input" rows="6"
-          style="resize: vertical; min-height: 50px; line-height: 1.5;"
-          placeholder="Vị trí sinh thiết..."></textarea>
 
         <button class="btn btn-save" style="margin-bottom: 5px;" onclick="saveToGoogleSheet()">📊 LƯU DỮ LIỆU</button>
         <div class="btn-group">
