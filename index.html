@@ -471,11 +471,20 @@
 
     <div id="main-content">
 
-        <div style="padding: 35px 0 25px 0; text-align: center;">
-            <h1 style="color: #1e40af; font-size: 32px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+        <div class="header-fixed" style="
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 15px 0;
+            background: rgba(255, 255, 255, 0.7); /* Màu trắng trong suốt 70% */
+            backdrop-filter: blur(10px);         /* Làm mờ nội dung phía sau */
+            -webkit-backdrop-filter: blur(10px); /* Hỗ trợ Safari trên iPhone */
+            border-bottom: 1px solid rgba(30, 64, 175, 0.1);
+">
+            <h1 style="color: #1e40af; font-size: 32px; font-weight: 800; text-transform: uppercase; margin: 0;">
                 PanEndoscopy Reporting System
             </h1>
-            <div style="height: 5px; width: 120px; background: #3b82f6; margin: 0 auto; border-radius: 2px;"></div>
         </div>
 
         <div id="checklist-render"></div>
@@ -897,12 +906,7 @@
             const imgHtml = imageList.length > 0
                 ? `<img src="${imageList[0]}" style="width:100%;height:260px;object-fit:contain;display:block;">`
                 : `<div style="width:100%;height:260px;border:1px dashed #aaa;display:table-cell;vertical-align:middle;text-align:center;color:#aaa;font-style:italic;">Ch&#432;a c&oacute; &#7843;nh n&#7897;i soi</div>`;
-
-
-            /*
-            return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 1.5cm; line-height: 1.4; } .header { text-align: center; border-bottom: 2px solid #0d9488; padding-bottom: 10px; } .title { font-size: 18pt; font-weight: bold; } .info-table { width: 100%; border-collapse: collapse; margin: 15px 0; } .info-table td { padding: 8px; border: 1px solid #cbd5e1; } .section-title { background: #0f1f3d; color: white; padding: 6px 12px; margin: 20px 0 10px 0; font-weight: bold; } .conclusion-box { background: #fefce8; padding: 12px; border-left: 4px solid #eab308; }</style></head><body><div class="header"><div class="title">BÁO CÁO NỘI SOI</div></div><table class="info-table"><tr><td>HỌ TÊN</td><td><b>${pName.toUpperCase()}</b></td></tr><tr><td>NGÀY</td><td>${pDate.split('-')[2] + '/' + pDate.split('-')[1] + '/' + pDate.split('-')[0]}</td></tr><tr><td>BÁC SĨ</td><td>${pDoc}</td></tr></table><div class="section-title">📌 PHÁT HIỆN TỔN THƯƠNG</div><ul>${lesionsStr}</ul><div class="section-title">📝 KẾT LUẬN</div><div class="conclusion-box"><p>T: ${tStaging}</p><p>${treatmentsStr}</p></div><div class="section-title">🖼️ HÌNH ẢNH</div>${imagesHtml}</body></html>`;
-            */
-
+            
             return `<!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -1047,29 +1051,7 @@
 </html>`;
         }
 
-        /*
-        function exportDOCX() {
-
-            const htmlContent = getReportHTML();
-
-            try {
-
-                const blob = htmlDocx.asBlob(htmlContent, { orientation: 'portrait' });
-
-                const link = document.createElement('a');
-
-                link.href = URL.createObjectURL(blob);
-
-                link.download = `BaoCao_${document.getElementById('pName').value || 'BN'}.docx`;
-
-                link.click();
-
-            } catch (e) { alert('Lỗi xuất DOCX'); }
-
-        }
-        */
-
-
+        
         function exportPDF() {
             const htmlContent = getReportHTML();
             const el = document.createElement('div');
@@ -1134,7 +1116,5 @@
         <span style="position:absolute; top:20px; right:35px; color:#f1f1f1; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
         <img id="modalImg" style="margin:auto; display:block; max-width:90%; max-height:90%; border:3px solid white; border-radius:4px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
     </div>
-
-
 </body>
 </html>
