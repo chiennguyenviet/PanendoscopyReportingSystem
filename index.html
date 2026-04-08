@@ -8,6 +8,55 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <style>
+        /* Sidebar chính */
+        #sidebar {
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            position: relative;
+        }
+
+        /* Container chứa danh sách */
+        #patient-list-container {
+            width: 100%; /* Luôn bằng chiều rộng sidebarContent */
+            flex: 1; /* Tự động chiếm hết phần diện tích còn lại phía dưới */
+            overflow-y: auto; /* Hiện thanh cuộn dọc */
+            overflow-x: hidden; /* Tuyệt đối không hiện thanh cuộn ngang */
+            border: 1px solid #eee;
+            border-radius: 4px;
+            box-sizing: border-box; /* Rất quan trọng để không bị tràn */
+        }
+
+            /* Làm đẹp thanh cuộn (Scrollbar) cho giống ứng dụng hiện đại */
+            #patient-list-container::-webkit-scrollbar {
+                width: 6px;
+            }
+
+            #patient-list-container::-webkit-scrollbar-track {
+                background: #f1f1f1;
+            }
+
+            #patient-list-container::-webkit-scrollbar-thumb {
+                background: #ccc;
+                border-radius: 10px;
+            }
+
+                #patient-list-container::-webkit-scrollbar-thumb:hover {
+                    background: #999;
+                }
+
+        /* Các mục bệnh nhân bên trong */
+        #patientList li {
+            padding: 10px;
+            border-bottom: 1px solid #f9f9f9;
+            cursor: pointer;
+            transition: background 0.2s;
+            word-wrap: break-word; /* Nếu tên quá dài sẽ tự xuống dòng thay vì đẩy rộng khung */
+        }
+
+            #patientList li:hover {
+                background-color: #eff6ff;
+            }
+
         body {
             /* Cho phép kéo quá đà để kích hoạt tải lại trang của trình duyệt */
             overscroll-behavior-y: auto;
@@ -386,12 +435,14 @@
             <span id="toggleIcon">◀</span>
         </div>
 
-        <div id="sidebarContent" style="width: 300px; padding: 15px;">
-            <div id="sidebarHeader" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                <h3 id="sidebarTitle" style="color: #1e40af; margin: 0; white-space: nowrap; font-size: 16px;">🔍 DANH SÁCH BỆNH NHÂN</h3>
+        <div id="sidebarContent" style="width: 300px; padding: 15px; display: flex; flex-direction: column; height: 100vh; box-sizing: border-box;">
 
-                <button onclick="refreshData(this)" id="btnRefresh" title="Làm mới danh sách"
-                        style="background: none; border: none; cursor: pointer; color: #1e40af; display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease;">
+            <h3 style="margin-top: 0;">DANH SÁCH BỆNH NHÂN</h3>
+
+            <div style="display: flex; gap: 5px; margin-bottom: 12px;">
+                <input type="text" id="searchInput" placeholder="Gõ tên tìm kiếm..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <button onclick="refreshData(this)" id="btnRefresh" title="Làm mới"
+                        style="background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 5px; color: #1e40af; display: flex; align-items: center; justify-content: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M23 4v6h-6"></path>
                         <path d="M1 20v-6h6"></path>
@@ -399,8 +450,10 @@
                     </svg>
                 </button>
             </div>
-            <input type="text" id="searchInput" placeholder="Gõ tên để tìm kiếm..." style="width: 100%; padding: 10px;">
-            <div id="patientList" style="margin-top:15px;">
+
+            <div id="patient-list-container">
+                <ul id="patientList" style="list-style: none; padding: 0; margin: 0;">
+                </ul>
             </div>
         </div>
     </div>
