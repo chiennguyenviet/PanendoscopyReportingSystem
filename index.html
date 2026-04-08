@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>PanEndoscopy Reporting System</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <script src="https://unpkg.com/html-docx-js/dist/html-docx.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <style>
+
+        #btnRefresh:hover {
+            color: #3b82f6;
+            transform: scale(1.1);
+        }
+
+        #btnRefresh:active {
+            transform: scale(0.9);
+        }
+        /* Thêm vào phần style */
+        .preview-img, #patientList img {
+            cursor: pointer;
+            touch-action: manipulation; /* Tối ưu cho màn hình cảm ứng */
+            -webkit-tap-highlight-color: transparent; /* Bỏ khung xanh khi chạm trên iPhone */
+        }
+
+        :root {
+            --navy: #0f1f3d;
+            --teal: #0d9488;
+            --bg: #f1f5f9;
+            --border: #e2e8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: #1e293b;
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        /* FIX LAYOUT: 3 CỘT CHÍNH */
+        /* Sidebar hỗ trợ ẩn hiện */
+        #sidebar {
+            width: 300px;
+            min-width: 300px; /* Độ rộng mặc định */
+            background: white;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            height: 100vh;
+            /* Thêm dòng này để ẩn phần thừa khi bóp nhỏ */
+            overflow: visible;
+        }
+
+            /* Khi đóng: Ép cả width và min-width về 0 */
+            #sidebar.closed {
+                width: 0 !important;
+                min-width: 0 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                border-right: none;
+            }
+
+                /* Ẩn nội dung bên trong khi đóng để không bị tràn chữ ra ngoài */
+                #sidebar.closed #sidebarContent {
+                    opacity: 0;
+                    visibility: hidden;
+                    pointer-events: none;
+                }
+
+        #toggleBtn {
+            position: absolute;
+            right: -15px; /* Nằm ngay mép */
+            top: 20px;
+            background: #1e40af;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Khi sidebar đóng, vẫn giữ nút ở vị trí có thể bấm được */
+        #sidebar.closed #toggleBtn {
+            right: -15px; /* Giữ nguyên hoặc đẩy nhẹ ra tùy màn hình */
+        }
+
+        /* Nút bấm luôn hiển thị */
+        #toggleBtn {
+            position: absolute;
+            right: -15px; /* Nằm đè lên mép */
+            top: 20px;
+            background: #1e40af;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 9999; /* Luôn nổi lên trên */
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            transition: right 0.3s ease;
+        }
+
+        /* Khi sidebar đóng, đẩy nút sang phải 1 chút để không bị mất */
+        #sidebar.closed #toggleBtn {
+            right: -35px;
+        }
+
+        /* Nút bấm nổi để đóng mở */
+        #toggleBtn {
+            position: absolute;
+            right: -15px;
+            top: 20px;
+            background: #1e40af;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        #main-content {
+            flex: 1; /* GIÃN RỘNG HẾT CỠ Ở GIỮA */
+            overflow-y: auto;
+            padding: 0 25px;
+            background: var(--bg);
+        }
+
+        .right-panel {
+            width: 400px;
+            min-width: 400px;
+            background: white;
+            padding: 20px;
+            border-left: 1px solid var(--border);
+            box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* UI COMPONENTS */
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        h2 {
+            font-size: 0.95rem;
+            color: var(--navy);
+            margin-bottom: 15px;
+            border-left: 4px solid var(--teal);
+            padding-left: 10px;
+            text-transform: uppercase;
+        }
+
+        /* Grid cho checklist tự động thích ứng chiều rộng */
+        .cl-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 10px;
+        }
+
+        .cl-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: 0.2s;
+        }
+
+            .cl-item:hover {
+                background: #f0f7ff;
+            }
+
+        .cl-cb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #cbd5e1;
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+            .cl-cb:checked {
+                background: var(--teal);
+                border-color: var(--teal);
+            }
+
+                .cl-cb:checked::after {
+                    content: "✓";
+                    position: absolute;
+                    top: -2px;
+                    left: 2px;
+                    color: white;
+                    font-weight: bold;
+                }
+
+        .f-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--teal);
+            padding: 15px;
+            text-align: center;
+            background: #f0fdfa;
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--teal);
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .img-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: 8px;
+            height: 140px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .del-img {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            text-align: center;
+            line-height: 22px;
+            cursor: pointer;
+            font-size: 12px;
+            border: 1px solid white;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            transition: 0.2s;
+        }
+
+        .btn-docx {
+            background: #2b579a;
+        }
+
+        .btn-pdf {
+            background: #dc2626;
+        }
+
+        .btn-save {
+            background: #0d9488;
+        }
+
+        .btn-clear {
+            background: #64748b;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+            .btn-group .btn {
+                flex: 1;
+            }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        /* Thiết lập vị trí cho hàng bệnh nhân */
+        #patientList > div {
+            position: relative; /* Để nút xóa căn theo hàng này */
+        }
+
+        /* Cấu hình nút xóa */
+        .btn-delete-patient {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #fee2e2;
+            color: #ef4444;
+            border: 1px solid #fca5a5;
+            width: 26px;
+            height: 26px;
+            border-radius: 4px;
+            display: none; /* Mặc định ẩn */
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        /* Hiện nút xóa khi di chuột vào hàng */
+        #patientList > div:hover .btn-delete-patient {
+            display: flex !important;
+        }
+
+        .btn-delete-patient:hover {
+            background: #ef4444;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div id="toggleBtn" onclick="toggleSidebar()">
+            <span id="toggleIcon">◀</span>
+        </div>
+
+        <div id="sidebarContent" style="width: 300px; padding: 15px;">
+            <div id="sidebarHeader" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                <h3 id="sidebarTitle" style="color: #1e40af; margin: 0; white-space: nowrap; font-size: 16px;">🔍 DANH SÁCH BỆNH NHÂN</h3>
+
+                <button onclick="refreshData(this)" id="btnRefresh" title="Làm mới danh sách"
+                        style="background: none; border: none; cursor: pointer; color: #1e40af; display: flex; align-items: center; justify-content: center; transition: transform 0.3s ease;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                </button>
+            </div>
+            <input type="text" id="searchInput" placeholder="Gõ tên..." style="width: 100%; padding: 10px;">
+            <div id="patientList" style="margin-top:15px;">
+            </div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div style="padding: 35px 0 25px 0; text-align: center;">
+            <h1 style="color: #1e40af; font-size: 32px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                PanEndoscopy Reporting System
+            </h1>
+            <div style="height: 5px; width: 120px; background: #3b82f6; margin: 0 auto; border-radius: 2px;"></div>
+        </div>
+
+        <div id="checklist-render"></div>
+    </div>
+
+    <div class="right-panel">
+        <h2>📋 Hành chính</h2>
+        <input type="text" id="pName" class="f-input" placeholder="HỌ TÊN BỆNH NHÂN">
+        <input type="date" id="pDate" class="f-input">
+        <input type="text" id="pDoc" class="f-input" placeholder="Bác sĩ thực hiện">
+
+        <h2>🖼️ Hình ảnh (Tối đa 4)</h2>
+        <div class="upload-zone" onclick="document.getElementById('fileUp').click()">📸 CHỌN ẢNH NỘI SOI</div>
+        <input type="file" id="fileUp" hidden multiple accept="image/*" onchange="handleImgs(this.files)">
+        <div class="preview-grid" id="pGrid"></div>
+
+        <h2>📝 Kết luận & Xử trí</h2>
+        <input type="text" id="tStaging" class="f-input" placeholder="Kết luận sơ bộ" value="">
+
+        <h2>📝 Sinh thiết</h2>
+
+<textarea id="moreNotes" class="f-input" rows="6"
+          style="resize: vertical; min-height: 50px; line-height: 1.5;"
+          placeholder="Vị trí sinh thiết..."></textarea>
+
+        <button class="btn btn-save" style="margin-bottom: 5px;" onclick="saveToGoogleSheet()">📊 LƯU DỮ LIỆU</button>
+        <div class="btn-group">
+            <button class="btn btn-docx" onclick="exportPDF()">📄 XUẤT PDF</button>
+            <button class="btn btn-pdf" onclick="printReport()">📑 In</button>
+        </div>
+        <button class="btn btn-clear" style="margin-top:5px" onclick="clearAll()">🔄 CA MỚI</button>
+    </div>
+
+    <script>
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const icon = document.getElementById('toggleIcon');
+
+            sidebar.classList.toggle('closed');
+
+            // Đổi chiều mũi tên
+            if (sidebar.classList.contains('closed')) {
+                icon.innerText = "▶";
+            } else {
+                icon.innerText = "◀";
+            }
+        }
+
+        const SECTIONS = {
+            np: { title: "1. Mũi họng", items: ["Hốc mũi **Phải**", "Hốc mũi **Trái**", "Vòm họng"] },
+            oral: { title: "2. Khoang miệng", items: ["Môi trên", "Môi dưới", "Tiền đình môi trên", "Tiền đình môi dưới", "Niêm mạc má **Phải**", "Lưỡi 2/3 trước", "Niêm mạc má **Trái**", "Sàn miệng", "Khẩu cái", "Lưỡi gà", "Khe liên hàm **Phải**", "Lợi môi", "Khe liên hàm **Trái**"] },
+            oro: { title: "3. Hầu miệng", items: ["Amidan **Phải**", "Amidan **Trái**", "Đáy lưỡi (1/3 sau)"] },
+            hypo: { title: "4. Hạ họng", items: ["Xoang lê **Phải**", "Xoang lê **Trái**", "Thành bên họng **Phải**", "Thành bên họng **Trái**", "Ba nẹp", "Sụn nắp thanh quản", "Thành sau hạ họng", "Mặt sau nhẫn", "Miệng thực quản"] },
+            lar: { title: "5. Thanh quản", items: ["Dây thanh **Phải**", "Dây thanh **Trái**", "Băng thanh thất **Phải**", "Băng thanh thất **Trái**", "Sụn phễu **Phải**", "Sụn phễu **Trái**", "Sụn nắp thanh quản", "Hạ thanh môn", "Mép trước"] },
+            bx: { title: "6. Thực quản & Khí Phế quản", items: ["Thực quản", "Khí quản", "Phế quản"] },
+            treat: { title: "7. Hướng xử trí", items: ["MDT hội chẩn", "Phẫu thuật", "↳ Hoá chất dẫn đầu", "↳ ROBOT", "Xạ trị", "Hoá trị"] }
+        };
+
+        let imageList = [];
+
+        function render() {
+            const container = document.getElementById('checklist-render');
+            container.innerHTML = '';
+            Object.entries(SECTIONS).forEach(([key, section]) => {
+                let html = `<div class="card"><h2>${section.title}</h2><div class="cl-grid">`;
+                section.items.forEach(item => {
+                    const label = item.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                    html += `<label class="cl-item"><input type="checkbox" class="cl-cb" data-val="${item}"><span>${label}</span></label>`;
+                });
+                container.innerHTML += html + `</div></div>`;
+            });
+            loadData();
+        }
+
+        function handleImgs(files) {
+            for (let f of files) {
+                if (imageList.length >= 4) { alert('Chỉ được tối đa 4 ảnh!'); break; }
+                const r = new FileReader();
+                r.onload = (e) => { imageList.push(e.target.result); renderImages(); };
+                r.readAsDataURL(f);
+            }
+        }
+
+        function renderImages() {
+            const grid = document.getElementById('pGrid');
+            grid.innerHTML = '';
+            imageList.forEach((src, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'img-wrapper';
+                // Thêm onclick và style cursor vào đây
+                wrapper.innerHTML = `
+    <img src="${src}" class="preview-img" 
+         onclick="openModal(this.src)" 
+         style="cursor:pointer; width:100%; height:100%; object-fit:contain;">
+    <div class="del-img" onclick="removeImage(${idx})">✕</div>`;
+                grid.appendChild(wrapper);
+            });
+        }
+
+        function removeImage(idx) {
+            imageList.splice(idx, 1);
+            renderImages();
+        }
+
+
+        // --- GOOGLE SHEET SAVE ---
+        async function saveToGoogleSheet() {
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbxGPJChz0xwwzF4o0cmKi_7tIAxHwQsxUbcZ0dgLhywfAoH-FIZMxamWmJYRNtZFMX-/exec';
+            const cloudName = 'dposxlu8h';
+            const uploadPreset = 'unsigned_preset';
+            const pName = document.getElementById('pName').value;
+            if (!pName) { alert("Vui lòng nhập tên bệnh nhân!"); return; }
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = "⌛ ĐANG LƯU...";
+
+            try {
+                // 1. Tải ảnh lên Cloudinary
+
+                let uploadedUrls = [];
+
+                if (imageList && imageList.length > 0) {
+
+                    for (let base64 of imageList) {
+
+                        const formData = new FormData();
+
+                        formData.append('file', base64);
+
+                        formData.append('upload_preset', uploadPreset);
+
+                        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, { method: 'POST', body: formData });
+
+                        const imgJson = await res.json();
+
+                        if (imgJson.secure_url) uploadedUrls.push(imgJson.secure_url);
+
+                    }
+
+                }
+                const allChecked = Array.from(document.querySelectorAll('.cl-cb:checked')).map(cb => cb.dataset.val);
+                const treatmentOptions = SECTIONS.treat.items;
+                const treatmentsList = allChecked.filter(item => treatmentOptions.includes(item));
+                const lesionsList = allChecked.filter(item => !treatmentOptions.includes(item));
+
+                const reportData = {
+                    pName: pName,
+                    pDate: document.getElementById('pDate').value,
+                    pDoc: document.getElementById('pDoc').value,
+                    tStaging: document.getElementById('tStaging').value,
+                    moreNotes: document.getElementById('moreNotes').value,
+                    lesions: lesionsList,
+                    treatments: treatmentsList,
+                    images: uploadedUrls // Lưu ý: Cloudinary logic nên giữ như cũ của bạn nếu cần
+                };
+
+                await fetch(scriptURL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(reportData) });
+                alert("✅ ĐÃ LƯU THÀNH CÔNG!");
+            } catch (e) { alert("❌ LỖI: " + e.message); }
+            finally { btn.disabled = false; btn.innerHTML = "📊 LƯU DỮ LIỆU"; }
+        }
+
+        // --- FETCH PATIENTS ---
+        async function fetchPatients() {
+            const listContainer = document.getElementById('patientList');
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbxGPJChz0xwwzF4o0cmKi_7tIAxHwQsxUbcZ0dgLhywfAoH-FIZMxamWmJYRNtZFMX-/exec';
+            try {
+                const response = await fetch(scriptURL, { method: 'GET', redirect: 'follow' });
+                const patients = await response.json();
+                listContainer.innerHTML = '';
+                displayPatients(patients);
+
+                document.getElementById('searchInput').oninput = (e) => {
+                    const term = e.target.value.toLowerCase().trim();
+                    const filtered = patients.filter(p => {
+                        const parts = (p.pName || "").split(' ');
+                        const lastName = parts[parts.length - 1].toLowerCase();
+                        return lastName.includes(term);
+                    });
+                    displayPatients(filtered);
+                };
+            } catch (e) { listContainer.innerHTML = '<p style="color:red; text-align:center;">Lỗi tải dữ liệu</p>'; }
+        }
+
+        function displayPatients(list) {
+            const listContainer = document.getElementById('patientList');
+            listContainer.innerHTML = '';
+            list.forEach(p => {
+                const item = document.createElement('div');
+                // Giữ nguyên style cũ của bạn nhưng thêm position relative
+                item.style.cssText = "padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: 0.2s; position: relative;";
+
+                item.onmouseover = () => item.style.background = "#f0f7ff";
+                item.onmouseout = () => item.style.background = "transparent";
+
+                const thumb = p.images1 || 'https://via.placeholder.com/40?text=BN';
+
+                // Thêm thẻ div .btn-delete-patient vào cuối innerHTML
+                // Tách chuỗi yyyy-mm-dd và đảo ngược lại
+                const dateParts = p.pDate.split("-");
+                const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : p.pDate;
+
+                // Sau đó dùng biến formattedDate để hiển thị
+                // Tìm đoạn này và sửa lại thẻ img như sau:
+                item.innerHTML = `
+    <img src="${thumb}" 
+         onclick="event.stopPropagation(); openModal(this.src);" 
+         style="width:40px; height:40px; border-radius:4px; object-fit:cover; border:1px solid #ddd; flex-shrink:0; cursor:pointer;">
+    <div style="flex: 1; min-width: 0;">
+        <b style="color:#1e40af; font-size:13px; text-transform:uppercase; display:block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 25px;">${p.pName}</b>
+        <span style="font-size:11px; color:#64748b;">📅 ${formattedDate}</span>
+    </div>
+    <div class="btn-delete-patient" title="Xóa hồ sơ">✕</div>
+`;
+
+                // Click vào hàng thì đổ dữ liệu (trừ khi click trúng nút xóa)
+                item.onclick = (e) => {
+                    if (e.target.classList.contains('btn-delete-patient')) return;
+                    fillPatientData(p);
+                };
+
+                // Xử lý sự kiện nút xóa
+                // Tìm đoạn này trong hàm displayPatients của bạn và thay thế:
+                const delBtn = item.querySelector('.btn-delete-patient');
+                delBtn.onclick = function (e) {
+                    e.stopPropagation();
+                    if (confirm(`Xóa vĩnh viễn hồ sơ BN: ${p.pName}?`)) {
+
+                        item.style.opacity = '0.3';
+                        const scriptURL = 'https://script.google.com/macros/s/AKfycbxuZq8Ip2pylkF-areHXGBc2HHdrHSNhOo8EotN7gFvmsYeYz-8Cd5zHxp9Ewjdd0Q5/exec'; // Đảm bảo dùng link Deployment mới nhất
+
+                        // Tạo Form Data để gửi (cách này ổn định hơn JSON thuần với Google Script)
+                        fetch(scriptURL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'text/plain' },
+                            body: JSON.stringify({
+                                action: 'delete',
+                                pName: p.pName,
+                                pDate: p.pDate
+                            })
+                        });
+
+                        // Xóa trên giao diện ngay lập tức để tạo cảm giác mượt mà
+                        setTimeout(() => {
+                            item.style.transform = 'translateX(-100%)';
+                            setTimeout(() => item.remove(), 300);
+                        }, 500);
+                    }
+                };
+
+                listContainer.appendChild(item);
+            });
+        }
+
+        // Hàm này bạn dán vào trong thẻ <script>
+        function openModal(src) {
+            if (!src || src.includes('via.placeholder')) return; // Không mở nếu là ảnh trống
+            document.getElementById("modalImg").src = src;
+            document.getElementById("imageModal").style.display = "flex";
+        }
+
+        function fillPatientData(p) {
+            document.getElementById('pName').value = p.pName || '';
+            document.getElementById('pDate').value = p.pDate || '';
+            document.getElementById('pDoc').value = p.pDoc || '';
+            document.getElementById('tStaging').value = p.tStaging || 'T2';
+            document.getElementById('moreNotes').value = p.moreNotes || '';
+
+            const allCbs = document.querySelectorAll('.cl-cb');
+            allCbs.forEach(cb => cb.checked = false);
+            const savedStr = ((p.lesions || "") + ", " + (p.treatments || "")).replace(/\*\*/g, "").toLowerCase();
+
+            allCbs.forEach(cb => {
+                const label = cb.parentElement.textContent.trim().replace(/\*\*/g, "").toLowerCase();
+                if (savedStr.includes(label)) cb.checked = true;
+            });
+
+            imageList = [p.images1, p.images2, p.images3, p.images4].filter(i => i && i.startsWith('http'));
+            renderImages();
+        }
+
+        function loadData() {
+            const saved = localStorage.getItem('panEndoData');
+            if (saved) { /* Logic load local storage cũ của bạn */ }
+        }
+
+        function clearAll() {
+            if (confirm('Bạn có chắc chắn muốn xóa sạch dữ liệu để làm ca mới?')) {
+                // 1. Xóa thông tin hành chính
+                document.getElementById('pName').value = '';
+                document.getElementById('pDate').value = '';
+                document.getElementById('pDoc').value = ''; // Hoặc để trống ''
+                document.getElementById('tStaging').value = 'T2';
+                document.getElementById('moreNotes').value = '';
+
+                // 2. Bỏ tích toàn bộ các Checkbox tổn thương và xử trí
+                const allCbs = document.querySelectorAll('.cl-cb');
+                allCbs.forEach(cb => cb.checked = false);
+
+                // 3. Xóa danh sách ảnh và cập nhật lại giao diện hiển thị ảnh
+                imageList = [];
+                renderImages();
+
+                // 4. (Tùy chọn) Xóa dữ liệu tạm trong LocalStorage nếu bạn có dùng
+                localStorage.removeItem('panEndoData');
+
+                // Thông báo nhẹ hoặc cuộn lên đầu trang
+                document.getElementById('main-content').scrollTo({ top: 0, behavior: 'smooth' });
+                console.log("Đã làm mới form dữ liệu.");
+            }
+        }
+        // EXPORT LOGIC (Giữ nguyên từ code của bạn)
+        // GIỮ NGUYÊN CÁC HÀM XUẤT BÁO CÁO CỦA BẠN
+
+        function getReportHTML() {
+
+            // 2. Lấy tất cả các mục đã tích chọn
+
+            const allChecked = Array.from(document.querySelectorAll('.cl-cb:checked')).map(cb => cb.dataset.val);
+
+
+
+            // 3. DANH SÁCH CÁC MỤC THUỘC PHẦN 7 (Hướng xử trí)
+
+            // Tôi liệt kê trực tiếp ở đây để đảm bảo tách chính xác 100%
+
+            const treatmentKeywords = ["MDT hội chẩn", "Phẫu thuật", "↳ Hoá chất dẫn đầu", "↳ ROBOT", "Xạ trị", "Hoá trị", "Hoá chất"];
+
+
+
+            // 4. Thực hiện lọc tách đôi dữ liệu
+
+            const treatmentsList = allChecked.filter(item => treatmentKeywords.some(key => item.includes(key)));
+
+            const lesionsList = allChecked
+
+                .filter(item => !treatmentKeywords.some(key => item.includes(key)))
+
+                .map(item => item.replace(/\*\*/g, '')); // Xóa ** ở phần tổn thương
+
+
+
+            // Chuyển mảng thành chuỗi để hiển thị
+
+            const treatmentsStr = treatmentsList.join(", ");
+
+            const lesionsStr = lesionsList.join(", ");
+
+
+
+            const pName = document.getElementById('pName').value || '__________________';
+
+            const pDate = document.getElementById('pDate').value || new Date().toISOString().slice(0, 10);
+
+            const pDoc = document.getElementById('pDoc').value || '__________________';
+
+            const tStaging = document.getElementById('tStaging').value || 'Chưa phân độ';
+
+            const moreNotes = document.getElementById('moreNotes').value || '';
+            const biopsy = document.getElementById('moreNotes').value.trim() || '';
+
+            let lesions = [];
+
+            document.querySelectorAll('.cl-cb:checked').forEach(cb => {
+
+                lesions.push(cb.dataset.val.replace(/\*\*/g, ''));
+
+            });
+
+
+
+            let imagesHtml = '';
+
+            if (imageList.length > 0) {
+
+                imagesHtml = '<table style="width:100%; border-collapse:collapse;">';
+
+                for (let i = 0; i < imageList.length; i += 2) {
+
+                    imagesHtml += '<tr>';
+
+                    imagesHtml += `<td style="text-align:center; padding:8px;"><img src="${imageList[i]}" style="max-width:240px; max-height:170px; border:1px solid #aaa; border-radius:4px;"><\/td>`;
+
+                    if (imageList[i + 1]) {
+
+                        imagesHtml += `<td style="text-align:center; padding:8px;"><img src="${imageList[i + 1]}" style="max-width:240px; max-height:170px; border:1px solid #aaa; border-radius:4px;"><\/td>`;
+
+                    } else { imagesHtml += '<td><\/td>'; }
+
+                    imagesHtml += '<\/tr>';
+
+                }
+
+                imagesHtml += '<\/table>';
+
+            } else {
+
+                imagesHtml = '<p style="color:#666;"><i>Không có hình ảnh kèm theo</i></p>';
+
+            }
+
+            // Bước 2: câu mô tả tổn thương
+            let step2, step3;
+            if (lesions.length > 0) {
+                step2 = `Quan s&aacute;t d&#432;&#7899;i k&iacute;nh hi&#7875;n vi th&#7845;y c&aacute;c v&#7883; tr&iacute; t&#7893;n th&#432;&#417;ng &#7903;: <strong>${lesions.join(', ')}</strong>.`;
+                step3 = `C&aacute;c v&#7883; tr&iacute; kh&aacute;c kh&ocirc;ng c&oacute; u.`;
+            } else {
+                step2 = `Quan s&aacute;t d&#432;&#7899;i k&iacute;nh hi&#7875;n vi kh&ocirc;ng th&#7845;y t&#7893;n th&#432;&#417;ng nghi ng&#7901; &#7903; c&aacute;c v&#7883; tr&iacute; quan s&aacute;t.`;
+                step3 = '';
+            }
+
+            // Bước 4: sinh thiết
+            const step4 = biopsy
+                ? `B&#7845;m sinh thi&#7871;t: ${biopsy}.`
+                : `B&#7845;m sinh thi&#7871;t: ..........................................`;
+
+           
+            const imgHtml = imageList.length > 0
+                ? `<img src="${imageList[0]}" style="width:100%;height:260px;object-fit:contain;display:block;">`
+                : `<div style="width:100%;height:260px;border:1px dashed #aaa;display:table-cell;vertical-align:middle;text-align:center;color:#aaa;font-style:italic;">Ch&#432;a c&oacute; &#7843;nh n&#7897;i soi</div>`;
+
+
+            /*
+            return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body { font-family: 'Times New Roman', serif; font-size: 12pt; margin: 1.5cm; line-height: 1.4; } .header { text-align: center; border-bottom: 2px solid #0d9488; padding-bottom: 10px; } .title { font-size: 18pt; font-weight: bold; } .info-table { width: 100%; border-collapse: collapse; margin: 15px 0; } .info-table td { padding: 8px; border: 1px solid #cbd5e1; } .section-title { background: #0f1f3d; color: white; padding: 6px 12px; margin: 20px 0 10px 0; font-weight: bold; } .conclusion-box { background: #fefce8; padding: 12px; border-left: 4px solid #eab308; }</style></head><body><div class="header"><div class="title">BÁO CÁO NỘI SOI</div></div><table class="info-table"><tr><td>HỌ TÊN</td><td><b>${pName.toUpperCase()}</b></td></tr><tr><td>NGÀY</td><td>${pDate.split('-')[2] + '/' + pDate.split('-')[1] + '/' + pDate.split('-')[0]}</td></tr><tr><td>BÁC SĨ</td><td>${pDoc}</td></tr></table><div class="section-title">📌 PHÁT HIỆN TỔN THƯƠNG</div><ul>${lesionsStr}</ul><div class="section-title">📝 KẾT LUẬN</div><div class="conclusion-box"><p>T: ${tStaging}</p><p>${treatmentsStr}</p></div><div class="section-title">🖼️ HÌNH ẢNH</div>${imagesHtml}</body></html>`;
+            */
+
+            return `<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>Bao cao noi soi – ${pName}</title>
+<style>
+  @page { size: A4 portrait; margin: 1.5cm 1.8cm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    color: #111;
+    background: white;
+    line-height: 1.5;
+    width: 620px;
+    max-width: 620px;
+    overflow: hidden;
+  }
+
+  /* INFO */
+  .info-table { width: 100%; border-collapse: collapse; margin-bottom: 60px; border: 1px solid #bbb; }
+  .info-table td { padding: 5px 10px; border: 1px solid #bbb; font-size: 9.5pt; }
+  .info-table .lbl { color: #555; font-size: 8pt; display: block; }
+  .info-table .val { font-weight: bold; color: #000; }
+
+  /* MAIN TABLE: ảnh trái, text phải */
+  .main-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .col-img { width: 40%; vertical-align: top; padding-right: 12px; }
+  .col-txt { width: 60%; vertical-align: top; word-wrap: break-word; overflow: hidden; }
+
+  /* ẢNH */
+  .img-wrap {
+    border: 1px solid #ccc;
+    background: #f5f5f5;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* CÁC BƯỚC PHẪU THUẬT */
+  .steps { list-style: none; padding: 0; margin: 0; width: 100%; }
+  .steps li {
+    display: table;
+    width: 100%;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 9.5pt;
+    line-height: 1.5;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .step-num {
+    display: table-cell;
+    font-weight: bold;
+    color: #0f1f3d;
+    white-space: nowrap;
+    padding-right: 6px;
+    vertical-align: top;
+    width: 20px;
+  }
+  .step-body {
+    display: table-cell;
+    vertical-align: top;
+    word-break: break-word;
+  }
+  .step-final {
+    margin-top: 10px;
+    font-weight: bold;
+    font-size: 9.5pt;
+    border-top: 2px solid #0f1f3d;
+    padding-top: 6px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- THÔNG TIN BỆNH NHÂN -->
+  <table class="info-table">
+    <tr>
+      <td style="width:45%">
+        <span class="lbl">H&#7885; t&ecirc;n b&#7879;nh nh&acirc;n</span>
+        <span class="val">${pName.toUpperCase()}</span>
+      </td>
+      <td style="width:25%">
+        <span class="lbl">Ng&agrave;y n&#7897;i soi</span>
+        <span class="val">${pDate.split('-')[2] + '/' + pDate.split('-')[1] + '/' + pDate.split('-')[0]}</span>
+      </td>
+      <td>
+        <span class="lbl">B&aacute;c s&#297; th&#7921;c hi&#7879;n</span>
+        <span class="val">${pDoc}</span>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ẢNH TRÁI + NỘI DUNG PHẢI -->
+  <table class="main-table">
+    <tr>
+      <!-- CỘT TRÁI: ẢNH -->
+      <td class="col-img">
+        <div class="img-wrap">${imgHtml}</div>
+      </td>
+
+      <!-- CỘT PHẢI: 7 BƯỚC -->
+      <td class="col-txt">
+        <ol class="steps">
+          <li>
+            <span class="step-num">1.</span>
+            <span class="step-body">D&#7909;ng d&#7909;ng c&#7909; n&#7897;i soi chuy&ecirc;n d&#7909;ng b&#7897;c l&#7897; c&aacute;c v&ugrave;ng c&#7847;n ki&#7875;m tra: <strong>M&#361;i h&#7885;ng (Nasopharynx), Khoang mi&#7879;ng (Oral Cavity), H&#7847;u h&#7885;ng (Oropharynx), Thanh qu&#7843;n (Larynx), H&#7841; h&#7885;ng (Hypopharynx), Mi&#7879;ng th&#7921;c qu&#7843;n (Esophageal Inlet), Kh&iacute; qu&#7843;n (Trachea).</strong></span>
+          </li>
+          <li>
+            <span class="step-num">2.</span>
+            <span class="step-body">${step2}</span>
+          </li>
+          ${step3 ? `<li><span class="step-num">3.</span><span class="step-body">${step3}</span></li>` : ''}
+          <li>
+            <span class="step-num">${lesions.length > 0 ? '4' : '3'}.</span>
+            <span class="step-body">${step4}</span>
+          </li>
+          <li>
+            <span class="step-num">${lesions.length > 0 ? '5' : '4'}.</span>
+            <span class="step-body">C&#7847;m m&aacute;u k&#7929; b&#7857;ng b&ocirc;ng t&#7849;m Adrenaline.</span>
+          </li>
+          <li>
+            <span class="step-num">${lesions.length > 0 ? '6' : '5'}.</span>
+            <span class="step-body">Ki&#7875;m tra l&#7841;i kh&ocirc;ng ch&#7843;y m&aacute;u.</span>
+          </li>
+          <li>
+            <span class="step-num">${lesions.length > 0 ? '7' : '6'}.</span>
+            <span class="step-body">Ng&#7915;ng soi.</span>
+          </li>
+        </ol>
+        <div class="step-final">K&#7871;t th&uacute;c ph&#7851;u thu&#7853;t an to&agrave;n.</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- HƯỚNG XỬ TRÍ -->
+  <div style="margin-top:18px; border-top:2px solid #0f1f3d; padding-top:10px;">
+    <div style="font-size:8.5pt;font-weight:bold;text-transform:uppercase;letter-spacing:.7px;color:#0d9488;border-bottom:1.5px solid #0d9488;padding-bottom:3px;margin-bottom:8px;">H&#432;&#7899;ng x&#7917; tr&iacute;</div>
+    <div>${treatmentsStr}</div>
+  </div>
+
+</body>
+</html>`;
+        }
+
+        /*
+        function exportDOCX() {
+
+            const htmlContent = getReportHTML();
+
+            try {
+
+                const blob = htmlDocx.asBlob(htmlContent, { orientation: 'portrait' });
+
+                const link = document.createElement('a');
+
+                link.href = URL.createObjectURL(blob);
+
+                link.download = `BaoCao_${document.getElementById('pName').value || 'BN'}.docx`;
+
+                link.click();
+
+            } catch (e) { alert('Lỗi xuất DOCX'); }
+
+        }
+        */
+
+
+        function exportPDF() {
+            const htmlContent = getReportHTML();
+            const el = document.createElement('div');
+            el.innerHTML = htmlContent;
+            // Lấy phần body của report
+            const body = el.querySelector('body') || el;
+
+            const pName = document.getElementById('pName').value || 'BN';
+            const opt = {
+                margin: [18, 20, 18, 20],   // top, right, bottom, left (mm)
+                filename: `BaoCao_NoiSoi_${pName}.pdf`,
+                image: { type: 'jpeg', quality: 0.97 },
+                html2canvas: { scale: 2, useCORS: true, logging: false },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak: { mode: 'avoid-all' }
+            };
+
+            // Tạo container tạm với đúng font + kích thước A4
+            const wrapper = document.createElement('div');
+            wrapper.style.cssText = 'width:620px;max-width:620px;overflow:hidden;font-family:Arial,sans-serif;';
+            wrapper.innerHTML = body.innerHTML;
+            document.body.appendChild(wrapper);
+
+            html2pdf().set(opt).from(wrapper).save().then(() => {
+                document.body.removeChild(wrapper);
+            });
+        }
+
+        function printReport() {
+            const htmlContent = getReportHTML();
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 600);
+        }
+
+
+        async function refreshData(btn) {
+            // Hiệu ứng xoay icon khi bấm
+            btn.style.transform = "rotate(360deg)";
+
+            // Hiển thị trạng thái đang tải trong danh sách
+            const listContainer = document.getElementById('patientList');
+            listContainer.innerHTML = '<p style="color: #666; text-align: center; font-size: 13px;">🔄 Đang cập nhật...</p>';
+
+            // Gọi lại hàm lấy dữ liệu đã có của bạn
+            try {
+                await fetchPatients();
+                console.log("Đã cập nhật danh sách mới nhất.");
+            } catch (e) {
+                console.error("Lỗi khi refresh:", e);
+            } finally {
+                // Reset lại vòng xoay sau khi xong
+                setTimeout(() => { btn.style.transform = "rotate(0deg)"; }, 500);
+            }
+        }
+
+
+        window.onload = () => { render(); fetchPatients(); };
+    </script>
+
+    <div id="imageModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.9); align-items:center; justify-content:center; cursor:zoom-out;" onclick="this.style.display='none'">
+        <span style="position:absolute; top:20px; right:35px; color:#f1f1f1; font-size:40px; font-weight:bold; cursor:pointer;">&times;</span>
+        <img id="modalImg" style="margin:auto; display:block; max-width:90%; max-height:90%; border:3px solid white; border-radius:4px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+    </div>
+
+</body>
+</html>
