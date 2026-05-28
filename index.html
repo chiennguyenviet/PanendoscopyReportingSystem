@@ -616,6 +616,9 @@
 
             <h3 style="font-size: 18px; color: #1e40af; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">
                 <span>📋</span> DANH SÁCH BỆNH NHÂN
+                <span id="totalPatients" style="background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 10px; font-size: 16px; margin-left: auto;">
+                    Đang tải...
+                </span>
             </h3>
             <div style="display: flex; gap: 5px; margin-bottom: 12px;">
                 <input type="text" id="searchInput" placeholder="Gõ tên để tìm kiếm..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
@@ -695,6 +698,7 @@
     </div>
 
     <script>
+        const SCRIPT_URL_GLOBAL = 'https://script.google.com/macros/s/AKfycbxuZq8Ip2pylkF-areHXGBc2HHdrHSNhOo8EotN7gFvmsYeYz-8Cd5zHxp9Ewjdd0Q5/exec';
         let currentEditId = null; // null là thêm mới, có giá trị là đang sửa
 
         function toggleSidebar() {
@@ -837,27 +841,51 @@
             finally { btn.disabled = false; btn.innerHTML = "📊 LƯU DỮ LIỆU"; }
         }
 
-        // --- FETCH PATIENTS ---
-        async function fetchPatients() {
+        async function fetchPatients(keyword = "") {
             const listContainer = document.getElementById('patientList');
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbxuZq8Ip2pylkF-areHXGBc2HHdrHSNhOo8EotN7gFvmsYeYz-8Cd5zHxp9Ewjdd0Q5/exec';
-            try {
-                const response = await fetch(scriptURL, { method: 'GET', redirect: 'follow' });
-                const patients = await response.json();
-                listContainer.innerHTML = '';
-                displayPatients(patients);
+            const totalSpan = document.getElementById('totalPatients');
 
-                document.getElementById('searchInput').oninput = (e) => {
-                    const term = e.target.value.toLowerCase().trim();
-                    const filtered = patients.filter(p => {
-                        const parts = (p.pName || "").split(' ');
-                        const lastName = parts[parts.length - 1].toLowerCase();
-                        return lastName.includes(term);
-                    });
-                    displayPatients(filtered);
-                };
-            } catch (e) { listContainer.innerHTML = '<p style="color:red; text-align:center;">Lỗi tải dữ liệu</p>'; }
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbxuZq8Ip2pylkF-areHXGBc2HHdrHSNhOo8EotN7gFvmsYeYz-8Cd5zHxp9Ewjdd0Q5/exec';
+            const url = `${scriptURL}?search=${encodeURIComponent(keyword)}`;
+
+            try {
+                // --- ĐOẠN QUAN TRỌNG: Hiển thị dòng thông báo khi đang tải ---
+                if (keyword !== "") {
+                    listContainer.innerHTML = `
+                <div style="text-align:center; padding: 20px; color: #64748b;">
+                    <div class="spinner" style="margin-bottom: 10px;">⏳</div>
+                    <p style="font-size: 13px; margin: 0;">🔍 Đang tìm kiếm...</p>
+                </div>`;
+                }
+
+                const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+                const result = await response.json();
+
+                // Cập nhật tổng số ca (luôn giữ số tổng từ Excel)
+                if (totalSpan && result.totalAll !== undefined) {
+                    totalSpan.innerText = result.totalAll;
+                }
+
+                const patients = result.data;
+
+                // Xóa thông báo "Đang tìm" và hiện kết quả
+                listContainer.innerHTML = '';
+
+                if (patients.length === 0 && keyword !== "") {
+                    listContainer.innerHTML = `
+                <div style="text-align:center; padding: 20px; color: #ef4444;">
+                    <p style="font-size: 13px;">❌ Không tìm thấy bệnh nhân nào khớp với từ khóa.</p>
+                </div>`;
+                } else {
+                    displayPatients(patients);
+                }
+            } catch (e) {
+                console.error("Lỗi fetch:", e);
+                listContainer.innerHTML = '<p style="color:red; text-align:center; padding:10px;">Lỗi kết nối dữ liệu</p>';
+            }
         }
+
+
 
         function displayPatients(list) {
 
@@ -876,7 +904,7 @@
 
                 item.innerHTML = `
                 <div class="thumb-container">
-                    <img src="${thumbSrc}" class="patient-thumb" onclick="event.stopPropagation(); openModal(this.src);">
+                    <img src="${thumbSrc}" loading="lazy" class="patient-thumb" onclick="event.stopPropagation(); openModal(this.src);">
                     <div class="status-icon">👤</div>
                 </div>
                 <div style="flex: 1; min-width: 0;">
@@ -1395,6 +1423,28 @@
         }
 
         // Cập nhật window.onload để khóa khi mới tải
+        let searchTimeout = null;
+
+        // Lắng nghe sự kiện gõ phím trên ô tìm kiếm
+        document.getElementById('searchInput').addEventListener('input', function (e) {
+            const keyword = e.target.value.trim();
+
+            // Xóa bộ đếm thời gian cũ
+            clearTimeout(searchTimeout);
+
+            // Nếu xóa trắng ô tìm kiếm, gọi lại fetchPatients không tham số (hiện 20 ca mới)
+            if (keyword === "") {
+                fetchPatients("");
+                return;
+            }
+
+            // Đợi người dùng dừng gõ 0.5 giây mới gửi yêu cầu lên Google
+            searchTimeout = setTimeout(() => {
+                console.log("Đang tìm kiếm bệnh nhân:", keyword);
+                fetchPatients(keyword);
+            }, 500);
+        });
+
         window.onload = () => {
             render();
             fetchPatients();
