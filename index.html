@@ -632,7 +632,24 @@
                 </button>
             </div>
 
+            <div id="paginationContainer" style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 10px 0; border-top: 1px solid #e2e8f0; background: #ffffff;">
+                <button id="btnFirstPage" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; transition: 0.2s;">
+                    ◀◀
+                </button>
+                <button id="btnPrevPage" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; transition: 0.2s;">
+                    ◀ Trước
+                </button>
+                <span id="pageInfo" style="font-size: 12px; color: #475569; font-weight: 500;">Trang 1 / 1</span>
+                <button id="btnNextPage" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; transition: 0.2s;">
+                    Sau ▶
+                </button>
+                <button id="btnLastPage" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; transition: 0.2s;">
+                    ▶▶
+                </button>
+            </div>
             <div id="patient-list-container">
+
+
                 <ul id="patientList" style="list-style: none; padding: 0; margin: 0;">
                 </ul>
             </div>
@@ -700,7 +717,10 @@
     <script>
         const SCRIPT_URL_GLOBAL = 'https://script.google.com/macros/s/AKfycbxuZq8Ip2pylkF-areHXGBc2HHdrHSNhOo8EotN7gFvmsYeYz-8Cd5zHxp9Ewjdd0Q5/exec';
         let currentEditId = null; // null là thêm mới, có giá trị là đang sửa
-
+        // Khai báo biến toàn cục quản lý phân trang
+        let currentPatientsData = []; // Lưu trữ mảng danh sách bệnh nhân hiện tại
+        let currentPage = 1;          // Trang hiện tại
+        const rowsPerPage = 20;       // Số lượng bệnh nhân trên mỗi trang
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const icon = document.getElementById('toggleIcon');
@@ -866,6 +886,24 @@
                     totalSpan.innerText = result.totalAll;
                 }
 
+                // Trích xuất mảng dữ liệu bệnh nhân thực tế từ kết quả phân tách của Server
+                // Nếu Server trả về mảng trực tiếp (code cũ), ta lấy trực tiếp mảng đó
+                // ================= KHU VỰC SỬA ĐỔI CHÍNH =================
+                // 1. Lấy toàn bộ dữ liệu từ server (nếu server trả về phân trang, đảm bảo scriptURL trả về full dữ liệu)
+                const rawData = result.data || [];
+
+                // 2. Gán trọn vẹn danh sách vào biến toàn cục currentPatientsData theo ý bạn
+                currentPatientsData = Array.isArray(rawData) ? [...rawData] : [];
+                currentPage = 1; // Reset về trang đầu tiên
+
+                if (currentPatientsData.length === 0) {
+                    listContainer.innerHTML = '<p style="text-align:center; font-size:12px; color:red; padding: 10px;">❌ Không có dữ liệu phù hợp.</p>';
+                    if (pageInfo) pageInfo.innerText = "Trang 0 / 0";
+                } else {
+                    // Tiến hành tính toán cắt mảng hiển thị 20 ca lên màn hình
+                    renderPagination();
+                }
+
                 const patients = result.data;
 
                 // Xóa thông báo "Đang tìm" và hiện kết quả
@@ -885,6 +923,44 @@
             }
         }
 
+        // --- HÀM XỬ LÝ CẮT DỮ LIỆU VÀ ĐIỀU HƯỚNG NÚT BẤM PHÂN TRANG ---
+        function renderPagination() {
+            const listContainer = document.getElementById('patientList');
+            const pageInfo = document.getElementById('pageInfo');
+
+            // Tính toán tổng số trang dựa trên mảng dữ liệu hiện có
+            const totalPages = Math.ceil(currentPatientsData.length / rowsPerPage) || 1;
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            // Tính toán chỉ mục cắt mảng (Ví dụ: Trang 1 từ index 0 -> 19)
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            const endIndex = startIndex + rowsPerPage;
+            const pageItems = currentPatientsData.slice(startIndex, endIndex);
+
+            // Đổ mảng 20 ca này vào hàm hiển thị giao diện ban đầu
+            displayPatients(pageItems);
+
+            // Cập nhật text số trang lên thanh phân trang ở trên
+            if (pageInfo) {
+                pageInfo.innerText = `Trang ${currentPage} / ${totalPages}`;
+            }
+
+            // Quản lý trạng thái vô hiệu hóa (disabled) của 2 nút bấm điều hướng
+            const btnPrev = document.getElementById('btnPrevPage');
+            const btnNext = document.getElementById('btnNextPage');
+
+            if (btnPrev && btnNext) {
+                btnPrev.disabled = (currentPage === 1);
+                btnPrev.style.opacity = (currentPage === 1) ? "0.4" : "1";
+                btnPrev.style.cursor = (currentPage === 1) ? "not-allowed" : "pointer";
+
+                btnNext.disabled = (currentPage === totalPages);
+                btnNext.style.opacity = (currentPage === totalPages) ? "0.4" : "1";
+                btnNext.style.cursor = (currentPage === totalPages) ? "not-allowed" : "pointer";
+            }
+        }
 
 
         function displayPatients(list) {
@@ -1444,6 +1520,60 @@
                 fetchPatients(keyword);
             }, 500);
         });
+
+        // --- ĐOẠN KHỞI TẠO SỰ KIỆN KHI NGƯỜI DÙNG TƯƠNG TÁC ---
+
+        // Lắng nghe sự kiện gõ ô tìm kiếm (Debounce tránh nghẽn API)
+        document.getElementById('searchInput').addEventListener('input', function (e) {
+            const keyword = e.target.value.trim();
+            clearTimeout(searchTimeout);
+
+            searchTimeout = setTimeout(() => {
+                fetchPatients(keyword);
+            }, 400); // Đợi dừng gõ 0.4 giây mới gửi lệnh
+        });
+
+        // Sự kiện click nút bấm "Trước"
+        if (document.getElementById('btnPrevPage')) {
+            document.getElementById('btnPrevPage').addEventListener('click', function () {
+                if (currentPage > 1) {
+                    currentPage--;
+                    renderPagination();
+                    document.getElementById('patient-list-container').scrollTop = 0; // Cuộn khung danh sách lên đầu
+                }
+            });
+        }
+
+        // Sự kiện click nút bấm "Sau"
+        if (document.getElementById('btnNextPage')) {
+            document.getElementById('btnNextPage').addEventListener('click', function () {
+                const totalPages = Math.ceil(currentPatientsData.length / rowsPerPage);
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    renderPagination();
+                    document.getElementById('patient-list-container').scrollTop = 0; // Cuộn khung danh sách lên đầu
+                }
+            });
+        }
+
+        // Sự kiện click nút bấm "First"
+        if (document.getElementById('btnFirstPage')) {
+            document.getElementById('btnFirstPage').addEventListener('click', function () {
+                    currentPage = 1;
+                    renderPagination();
+                    document.getElementById('patient-list-container').scrollTop = 0; // Cuộn khung danh sách lên đầu
+            });
+        }
+
+        // Sự kiện click nút bấm "Last"
+        if (document.getElementById('btnLastPage')) {
+            document.getElementById('btnLastPage').addEventListener('click', function () {
+                const totalPages = Math.ceil(currentPatientsData.length / rowsPerPage);
+                currentPage = totalPages
+                renderPagination();
+                document.getElementById('patient-list-container').scrollTop = 0; // Cuộn khung danh sách lên đầu
+            });
+        }
 
         window.onload = () => {
             render();
