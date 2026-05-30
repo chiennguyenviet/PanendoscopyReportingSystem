@@ -8,6 +8,36 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
     <style>
+        /* Tìm vùng CSS của .patient-item rồi chèn thêm các class bổ sung này vào phía dưới */
+        .patient-item {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+            /* Đảm bảo flex để ảnh đứng hàng ngang với chữ */
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Class định dạng riêng cho ảnh thumbnail nhỏ trong danh sách bệnh nhân */
+        .patient-thumb {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            flex-shrink: 0; /* Không cho ảnh bị bóp méo */
+        }
+
+        .patient-info-block {
+            flex: 1; /* Khối chữ tự động giãn rộng chiếm không gian còn lại */
+        }
+
         /* Đảm bảo main-content là một flex container để đẩy footer xuống */
         #main-content {
             display: flex;
@@ -622,6 +652,10 @@
             </h3>
             <div style="display: flex; gap: 5px; margin-bottom: 12px;">
                 <input type="text" id="searchInput" placeholder="Gõ tên để tìm kiếm..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <div style="margin-top: 10px; display: flex; align-items: center; gap: 6px; user-select: none;">
+                    <input type="checkbox" id="cbLoadThumbnail" onchange="renderPagination()" style="cursor: pointer; width: 15px; height: 15px; accent-color: var(--primary);">
+                    <label for="cbLoadThumbnail" style="font-size: 12px; color: var(--text-light); cursor: pointer; font-weight: 500;">Hiển thị thumbnail</label>
+                </div>
                 <button onclick="refreshData(this)" id="btnRefresh" title="Làm mới"
                         style="background: #f3f4f6; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; padding: 5px; color: #1e40af; display: flex; align-items: center; justify-content: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -964,17 +998,21 @@
 
 
         function displayPatients(list) {
-
             const listContainer = document.getElementById('patientList');
             listContainer.innerHTML = '';
-
+            // Kiểm tra xem trạng thái checkbox hiển thị thumbnail hiện tại đang checked hay không
+            const isLoadThumb = document.getElementById('cbLoadThumbnail').checked;
             list.forEach(p => {
                 const item = document.createElement('div');
                 item.className = "patient-item";
-
+                let thumbSrc = '';
                 // Lấy ảnh đầu tiên làm thumbnail, nếu không có dùng ảnh placeholder
-                const thumbSrc = (p.images1 && p.images1 !== "") ? p.images1 : 'https://via.placeholder.com/45?text=BN';
-
+                if (isLoadThumb) {
+                    thumbSrc = (p.images1 && p.images1 !== "") ? p.images1 : "https://placehold.co/45x45?text=No+Img";
+                }
+                else {
+                    thumbSrc = "https://placehold.co/45x45?text=No+Img";
+                }
                 const dateParts = p.pDate.split("-");
                 const formattedDate = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}` : p.pDate;
 
