@@ -915,7 +915,7 @@
                     <p style="font-size: 13px;">❌ Không tìm thấy bệnh nhân nào khớp với từ khóa.</p>
                 </div>`;
                 } else {
-                    displayPatients(patients);
+                    renderPagination();
                 }
             } catch (e) {
                 console.error("Lỗi fetch:", e);
@@ -1378,29 +1378,7 @@
 </html>`;
         }
 
-        /*
-        function exportDOCX() {
-
-            const htmlContent = getReportHTML();
-
-            try {
-
-                const blob = htmlDocx.asBlob(htmlContent, { orientation: 'portrait' });
-
-                const link = document.createElement('a');
-
-                link.href = URL.createObjectURL(blob);
-
-                link.download = `BaoCao_${document.getElementById('pName').value || 'BN'}.docx`;
-
-                link.click();
-
-            } catch (e) { alert('Lỗi xuất DOCX'); }
-
-        }
-        */
-
-
+        
         function exportPDF() {
             const htmlContent = getReportHTML();
             const el = document.createElement('div');
